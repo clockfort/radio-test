@@ -55,8 +55,7 @@ int main(void)
 // Basic command interpreter for controlling port pins
 int main(void)
 {
-	char buf[32];
-	uint8_t n;
+	uint16_t c;
 
 	// set for 16 MHz clock, set LED pin mode
 	CPU_PRESCALE(0);
@@ -82,30 +81,14 @@ int main(void)
 		// "AT command", which can still be buffered.
 		usb_serial_flush_input();
 
-		// and then listen for commands and process them
+		// Do pseudo-interactive I/O with the USB serial port/uart.
 		while (1) {
-			send_str(PSTR("> "));
-			n = recv_str(buf, sizeof(buf));
-			if (n == 255) break;
-			send_str(PSTR("\r\n"));
-			parse_and_execute_command(buf, n);
+			c = usb_serial_getchar();
+			uart_putchar(c);	
 		}
 	}
 }
 #endif
-
-// Send a string to the USB serial port.  The string must be in
-// flash memory, using PSTR
-//
-void send_str(const char *s)
-{
-	char c;
-	while (1) {
-		c = pgm_read_byte(s++);
-		if (!c) break;
-		usb_serial_putchar(c);
-	}
-}
 
 // Receive a string from the USB serial port.  The string is stored
 // in the buffer and this function will not exceed the buffer size.
