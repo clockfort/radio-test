@@ -40,17 +40,16 @@ uint8_t recv_str(char *buf, uint8_t size);
 void parse_and_execute_command(const char *buf, uint8_t num);
 
 volatile uint8_t proc_timer;
-volatile uint8_t uc;
 
 ISR(TIMER0_OVF_vect){
                 ++proc_timer;
 		if(uart_available()){
-			uc = uart_getchar();
+			usb_serial_putchar_nowait(uart_getchar());
 			LED_ON;
 			proc_timer = 0;
 		}
                 else if(proc_timer>61){
-                        LED_OFF;
+                        LED_OFF; //Keep the LED on for a human-perceivable amount of time when UART is active
                 }
 }
 
@@ -98,7 +97,7 @@ int main(void)
 		// Do pseudo-interactive I/O with the USB serial port/uart.
 		while (1) {
 			c = usb_serial_getchar();
-			uart_putchar(c);	
+			uart_putchar(c);
 		}
 	}
 }
