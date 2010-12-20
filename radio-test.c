@@ -22,6 +22,7 @@
  */
 
 #include <avr/io.h>
+#include <avr/interrupt.h>
 #include <avr/pgmspace.h>
 #include <stdint.h>
 #include <util/delay.h>
@@ -38,19 +39,20 @@ void send_str(const char *s);
 uint8_t recv_str(char *buf, uint8_t size);
 void parse_and_execute_command(const char *buf, uint8_t num);
 
-#if 0
-// Very simple character echo test
-int main(void)
-{
-	CPU_PRESCALE(0);
-	usb_init();
-	while (1) {
-		int n = usb_serial_getchar();
-		if (n >= 0) usb_serial_putchar(n);
-	}
-}
+volatile uint8_t proc_timer;
+volatile uint8_t uc;
 
-#else
+ISR(TIMER0_OVF_vect){
+                ++proc_timer;
+		if(uart_available()){
+			uc = uart_getchar();
+			LED_ON;
+			proc_timer = 0;
+		}
+                else if(proc_timer>61){
+                        LED_OFF;
+                }
+}
 
 // Basic command interpreter for controlling port pins
 int main(void)
@@ -61,14 +63,26 @@ int main(void)
 	CPU_PRESCALE(0);
 	LED_CONFIG;
 
-	// initialize the USB, and then wait for the host
-	// to set configuration.  If the Teensy is powered
-	// without a PC connected to the USB port, this 
-	// will wait forever.
+	//Setup USB
 	usb_init();
 	while (!usb_configured()) /* wait */ ;
 	_delay_ms(1000);
 
+
+	//Setup interrupts
+        //Set CPU clock divider to ~61Hz
+        TCCR0B |= _BV(CS02) | _BV(CS00);
+
+        //Interrupt on timer0 overflow
+        TIMSK0 |= _BV(TOIE0);
+
+        proc_timer=0;
+        TCNT0 = 0;
+
+        //Enable interrupts
+        sei();
+
+	//setup UART
 	uart_init(BAUD_RATE);
 
 	while (1) {
@@ -86,50 +100,5 @@ int main(void)
 			c = usb_serial_getchar();
 			uart_putchar(c);	
 		}
-	}
-}
-#endif
-
-// Receive a string from the USB serial port.  The string is stored
-// in the buffer and this function will not exceed the buffer size.
-// A carriage return or newline completes the string, and is not
-// stored into the buffer.
-// The return value is the number of characters received, or 255 if
-// the virtual serial connection was closed while waiting.
-//
-uint8_t recv_str(char *buf, uint8_t size)
-{
-	int16_t r;
-	uint8_t count=0;
-
-	while (count < size) {
-		r = usb_serial_getchar();
-		if (r != -1) {
-			if (r == '\r' || r == '\n') return count;
-			if (r >= ' ' && r <= '~') {
-				*buf++ = r;
-				usb_serial_putchar(r);
-				count++;
-			}
-		} else {
-			if (!usb_configured() ||
-			  !(usb_serial_get_control() & USB_SERIAL_DTR)) {
-				// user no longer connected
-				return 255;
-			}
-			// just a normal timeout, keep waiting
-		}
-	}
-	return count;
-}
-
-// parse a user command and execute it, or print an error message
-//
-void parse_and_execute_command(const char *buf, uint8_t num)
-{
-	uint8_t i;
-
-	for(i=0; i < num; ++i){
-		uart_putchar(buf[i]);
 	}
 }
