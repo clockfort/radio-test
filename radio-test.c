@@ -1,3 +1,7 @@
+/* Clockfort, 2010-12-20.
+ * Code to test cheap wireless radios.
+ */
+
 /* Simple example for Teensy USB Development Board
  * http://www.pjrc.com/teensy/
  * Copyright (c) 2008 PJRC.COM, LLC
@@ -35,10 +39,6 @@
 #define CPU_PRESCALE(n) (CLKPR = 0x80, CLKPR = (n))
 #define BAUD_RATE	9600
 
-void send_str(const char *s);
-uint8_t recv_str(char *buf, uint8_t size);
-void parse_and_execute_command(const char *buf, uint8_t num);
-
 volatile uint8_t proc_timer;
 
 ISR(TIMER0_OVF_vect){
@@ -53,7 +53,6 @@ ISR(TIMER0_OVF_vect){
                 }
 }
 
-// Basic command interpreter for controlling port pins
 int main(void)
 {
 	uint16_t c;
