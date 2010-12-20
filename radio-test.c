@@ -43,12 +43,12 @@ volatile uint8_t proc_timer;
 
 ISR(TIMER0_OVF_vect){
                 ++proc_timer;
-		if(uart_available()){
+		while(uart_available()){
 			usb_serial_putchar_nowait(uart_getchar());
 			LED_ON;
 			proc_timer = 0;
 		}
-                else if(proc_timer>61){
+                if(proc_timer>30){
                         LED_OFF; //Keep the LED on for a human-perceivable amount of time when UART is active
                 }
 }
